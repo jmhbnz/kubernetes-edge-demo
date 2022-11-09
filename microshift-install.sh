@@ -24,7 +24,7 @@ establish_firewall () {
 install_crio() {
     echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_Testing/ /" | sudo tee /etc/apt/sources.list.d/crio-archive.list > /dev/null
 
-    sudo mkdir -p /usr/share/keyrings
+    sudo mkdir -p /usr/share/keyrings && sudo rm /usr/share/keyrings/libcontainers-archive-keyring.gpg
     curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_Testing/Release.key | sudo gpg --dearmor -o /usr/share/keyrings/libcontainers-archive-keyring.gpg
 
     sudo apt-get update -y
@@ -118,27 +118,49 @@ validation_check(){
     fi
 }
 
+# Locate kubeadmin configuration to default kubeconfig location
+prepare_kubeconfig() {
+    mkdir -p $HOME/.kube
+    if [ -f $HOME/.kube/config ]; then
+        mv $HOME/.kube/config $HOME/.kube/config.orig
+    fi
+    sudo KUBECONFIG=/var/lib/microshift/resources/kubeadmin/kubeconfig:$HOME/.kube/config.orig  /usr/local/bin/kubectl config view --flatten > $HOME/.kube/config
+}
 
 # Script execution
-echo "Installing dependencies..."
+echo
+echo
+echo "📦 Installing dependencies..."
 install_dependencies
 
-echo "Configuring firewall..."
+echo
+echo
+echo "🔥 Configuring firewall..."
 establish_firewall
 
-echo "Installing crio..."
+echo
+echo
+echo "🛠️ Installing crio..."
 install_crio
 
-echo "Configuring crio for microshift..."
+echo
+echo
+echo "⚙️ Configuring crio for microshift..."
 crio_conf
 
-echo "Verifying crio start..."
+echo
+echo
+echo "🧪 Verifying crio start..."
 verify_crio
 
-echo "Installing kubectl..."
+echo
+echo
+echo "⬇ Installing kubectl..."
 get_kubectl
 
-echo "Installing microshift..."
+echo
+echo
+echo "🛳️ Installing microshift..."
 get_microshift
 
 until sudo test -f /var/lib/microshift/resources/kubeadmin/kubeconfig
@@ -146,5 +168,7 @@ do
     sleep 2
 done
 
-echo "Preparing kubeconfig..."
+echo
+echo
+echo "🔑 Preparing kubeconfig..."
 prepare_kubeconfig
