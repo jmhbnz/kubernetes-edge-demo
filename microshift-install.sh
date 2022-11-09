@@ -3,7 +3,7 @@ set -e -o pipefail
 
 # Install dependencies
 install_dependencies() {
-    sudo apt-get install -y policycoreutils-python-utils conntrack firewalld
+    sudo apt-get install -y policycoreutils-python-utils conntrack firewalld wget curl
 }
 
 # Setup firewall
@@ -28,12 +28,17 @@ install_crio() {
     curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_Testing/Release.key | sudo gpg --dearmor -o /usr/share/keyrings/libcontainers-archive-keyring.gpg
 
     sudo apt-get update -y
-    sudo apt-get install -y cri-o cri-o-runc cri-tools containernetworking-plugins
+    sudo apt-get install -y cri-o-runc cri-tools containernetworking-plugins
+
+    wget https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/1.25:/1.25.1/Debian_11/arm64/cri-o_1.25.1~0_arm64.deb
+
+    sudo dpkg -i cri-o_1.25.1~0_arm64.deb
 }
 
 
 # CRI-O config to match MicroShift networking values
 crio_conf() {
+    sudo rm /etc/cni/net.d/*
     sudo sh -c 'cat << EOF > /etc/cni/net.d/100-crio-bridge.conf
 {
     "cniVersion": "0.4.0",
@@ -64,7 +69,7 @@ verify_crio() {
 
 # Download and install kubectl
 get_kubectl() {
-    curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/$ARCH/kubectl"
+    curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/arm64/kubectl"
     sudo chmod +x ./kubectl
     sudo mv ./kubectl /usr/local/bin/kubectl
 }
@@ -72,18 +77,10 @@ get_kubectl() {
 
 # Download and install microshift
 get_microshift() {
-    curl -LO https://github.com/redhat-et/microshift/releases/download/$VERSION/microshift-linux-$ARCH
-    curl -LO https://github.com/redhat-et/microshift/releases/download/$VERSION/release.sha256
+    curl -LO https://github.com/redhat-et/microshift/releases/download/nightly/microshift-linux-arm64
 
-    BIN_SHA="$(sha256sum microshift-linux-$ARCH | awk '{print $1}')"
-    KNOWN_SHA="$(grep "microshift-linux-$ARCH" release.sha256 | awk '{print $1}')"
-
-    if [[ "$BIN_SHA" != "$KNOWN_SHA" ]]; then
-        echo "SHA256 checksum failed" && exit 1
-    fi
-
-    sudo chmod +x microshift-linux-$ARCH
-    sudo mv microshift-linux-$ARCH /usr/local/bin/microshift
+    sudo chmod +x microshift-linux-arm64
+    sudo mv microshift-linux-arm64 /usr/local/bin/microshift
 
     cat << EOF | sudo tee /usr/lib/systemd/system/microshift.service
 [Unit]
@@ -100,12 +97,6 @@ User=root
 WantedBy=multi-user.target
 EOF
 
-    if [ "$DISTRO" = "ubuntu" ] && [ "$OS_VERSION" = "18.04" ]; then
-        sudo sed -i 's|^ExecStart=microshift|ExecStart=/usr/local/bin/microshift|' /usr/lib/systemd/system/microshift.service
-    fi
-    if [ "$DISTRO" != "ubuntu" ]; then
-        sudo restorecon -v /usr/local/bin/microshift
-    fi
     sudo systemctl enable microshift.service --now
 }
 
@@ -129,21 +120,31 @@ validation_check(){
 
 
 # Script execution
-#get_distro
-get_arch
-#get_os_version
-pre-check-installation
-validation_check
-#install_dependencies
-#establish_firewall
-#install_crio
+echo "Installing dependencies..."
+install_dependencies
+
+echo "Configuring firewall..."
+establish_firewall
+
+echo "Installing crio..."
+install_crio
+
+echo "Configuring crio for microshift..."
 crio_conf
+
+echo "Verifying crio start..."
 verify_crio
+
+echo "Installing kubectl..."
 get_kubectl
+
+echo "Installing microshift..."
 get_microshift
 
 until sudo test -f /var/lib/microshift/resources/kubeadmin/kubeconfig
 do
     sleep 2
 done
+
+echo "Preparing kubeconfig..."
 prepare_kubeconfig
