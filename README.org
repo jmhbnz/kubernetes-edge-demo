@@ -11,6 +11,21 @@ I used this guide to run a live demo at the [[https://community.cncf.io/events/d
 This guide assumes you have the following:
 - A pinephone running [[https://mobian-project.org/][mobian]] that has internet connectivity.
 - A domain with authoritative dns managed by cloudflare.
+- The ~tmate~ package installed via ~apt~.
+
+
+* Initial device terminal
+
+With our edge device powered on we need a way to get a starting remote terminal running so we can start our deployment process.
+
+For this we can leverage [[https://tmate.io][tmate]], this is a fork of ~tmux~ that allows for secure terminal sharing, primarily for pairing.
+
+Let's start a new tmate session on our device and connect to it 🚀
+
+#+NAME: Start a named tmate session
+#+begin_src tmate
+tmate -n "kubernetes-edge-demo"
+#+end_src
 
 
 * Remote access to edge device
@@ -21,16 +36,19 @@ In our example we have a pinephone that is currently on a 4G cellular connection
 
 Let's start by installing and configuriong ~openssh-server~ on our device:
 
-#+Setup openssh-server
-#+begin_src tmate
-# Install openssh-server
+#+Install openssh-server
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 sudo apt install -y openssh-server
+#+end_src
 
+
+#+NAME: Configure ssh and start
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 # Configure openssh-server auth to be key based
-sudo sed -i -e 's/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
+sudo sed -i -e 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config || true
 
 # Add my key to authorized keys
-mkdir ~/.ssh && echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCsYhu2xE5cxq+sA7bNyHjZUk9IHKXHsd58ZCFLfCHbK5nnWLgJwxFnF1NzBylyOJviJ2v54VYQoXvsWLTbehlyH/kqJS8icmo0iu2mUFcp09n/3NcGw2BJefwMbK+mofxBBR78RRNI8DG3yk7Apa19BrLpFWaL/VljGidgR61WhPH7FbXjTh5NuQR494LG3yBRn16yIPNN+xZhf0TW7uoVCiSr77kFELgrTqjpPyoYiYLZZdKqJZ7PDgOEcLq5oDEZfYME8sGRPyufGByH7tnK9fgFaZ9wW747wTNN2naUIhCNzJLxKgr8fMMRBXuqeUjk+5/EzxGFXjxE+4a+dhD51OO5mSN1ctG/061HIQjJwZ2Zk6CACypBEv6nLVREaMqKQtcEPPooZ2SK4SdiMtwC8XLCZ6wRQDVskMentI1uy3bbCwV9AG0auiLA3sfbyKI8093p5NLsLEiR+BScu4/tLx7kzPetl89QOKzTI60GXzBaSnBXhAtQTijZZFrOGbQ1NQ1deWb6pT8foOPOs3P2F0a4Y/nY/xlomBuNqTI48Vi8MZJjhTvAe8BF+Y7C8HlSaCZeH1DrnymkbLhpXvVH7Tuir/DLOyhrwnXqNuxpMyWsfy5UrTfe67GP2+jzriFxteTMbvZjmgbF2UDMYs5U59NaYPdAYxjwdzH5nHoIWw== james@james-desktop" >> ~/.ssh/authorized_keys
+echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCsYhu2xE5cxq+sA7bNyHjZUk9IHKXHsd58ZCFLfCHbK5nnWLgJwxFnF1NzBylyOJviJ2v54VYQoXvsWLTbehlyH/kqJS8icmo0iu2mUFcp09n/3NcGw2BJefwMbK+mofxBBR78RRNI8DG3yk7Apa19BrLpFWaL/VljGidgR61WhPH7FbXjTh5NuQR494LG3yBRn16yIPNN+xZhf0TW7uoVCiSr77kFELgrTqjpPyoYiYLZZdKqJZ7PDgOEcLq5oDEZfYME8sGRPyufGByH7tnK9fgFaZ9wW747wTNN2naUIhCNzJLxKgr8fMMRBXuqeUjk+5/EzxGFXjxE+4a+dhD51OO5mSN1ctG/061HIQjJwZ2Zk6CACypBEv6nLVREaMqKQtcEPPooZ2SK4SdiMtwC8XLCZ6wRQDVskMentI1uy3bbCwV9AG0auiLA3sfbyKI8093p5NLsLEiR+BScu4/tLx7kzPetl89QOKzTI60GXzBaSnBXhAtQTijZZFrOGbQ1NQ1deWb6pT8foOPOs3P2F0a4Y/nY/xlomBuNqTI48Vi8MZJjhTvAe8BF+Y7C8HlSaCZeH1DrnymkbLhpXvVH7Tuir/DLOyhrwnXqNuxpMyWsfy5UrTfe67GP2+jzriFxteTMbvZjmgbF2UDMYs5U59NaYPdAYxjwdzH5nHoIWw== james@james-desktop" >> ~/.ssh/authorized_keys
 
 # Start and enable ssh daemon
 sudo systemctl enable --now sshd.service
@@ -40,9 +58,9 @@ sudo systemctl enable --now sshd.service
 Once we have ssh running we are ready to set up our cloudflare access tunnel. The first step here is to install the ~cloudflared~ daemon on our device:
 
 #+NAME: Install cloudflared
-#+begin_src tmate
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 # Download latest cloudflared release
-curl -L --output cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb"
+curl -L --output cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb"
 
 # Install cloudflared via dpkg
 sudo dpkg -i cloudflared.deb
@@ -52,23 +70,35 @@ sudo dpkg -i cloudflared.deb
 Once ~cloudflared~ is installed we need to set up a tunnel in the [[https://one.dash.cloudflare.com][cloudflare zero trust dashboard]]. Once a tunnel has been created we will have a token that can be used with the following command to establish our secure tunnel:
 
 #+NAME: Start cloudflare tunnel service
-#+begin_src tmate
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 sudo cloudflared service install "<token>"
 #+end_src
 
 Wohoo - we now have secure access to our device, from anywhere, provided our device has any active internet connection 🎉
+
+Let's test our new tunnel by disconnecting from the tmate session and connecting back with ~ssh~ over ~cloudflared~.
+
+#+NAME: Reconnect via cloudflared
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+# Exit the current tmate session
+exit
+
+# Connect via cloudflared
+ssh -o ProxyCommand="cloudflared access ssh --hostname %h" mobian@phone.jamma.dev
+#+end_src
 
 
 * Install kubernetes
 
 Now that we have secure connectivity to our edge device, let's install kubernetes. For our demo today we need a lightweight kubernetes distribution because our device has an old CPU with four slow 1.2Ghz cores and 3GB of low power DDR3 ram.
 
-With these constraints in mind we will be deploying ~k3s~ today which is a [[https://www.cncf.io/projects/k3s/][sandbox cncf project]].
+With these constraints in mind we will be deploying ~microshift~ today which is a [[https://github.com/openshift/microshift][lightweight kubernetes distribution]] of OpenShift that is specifically designed for edge devices.
 
-#+NAME: Install k3s without traefik
-#+begin_src tmate
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -s -
+#+NAME: Install microshift
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+# Clone down repository
+cd Downloads && git clone https://github.com/jmhbnz/kubernetes-edge-demo.git
+
+# Run the install script
+sudo ./microshift-install.sh
 #+end_src
-
-
-* Deploy a workload
