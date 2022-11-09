@@ -30,7 +30,7 @@ install_crio() {
     sudo apt-get update -y
     sudo apt-get install -y cri-o-runc cri-tools containernetworking-plugins
 
-    wget https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/1.25:/1.25.1/Debian_11/arm64/cri-o_1.25.1~0_arm64.deb
+    #wget https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/1.25:/1.25.1/Debian_11/arm64/cri-o_1.25.1~0_arm64.deb
 
     sudo dpkg -i cri-o_1.25.1~0_arm64.deb
 }
@@ -140,12 +140,12 @@ establish_firewall
 
 echo
 echo
-echo "🛠️ Installing crio..."
+echo "🛠️  Installing crio..."
 install_crio
 
 echo
 echo
-echo "⚙️ Configuring crio for microshift..."
+echo "⚙️  Configuring crio for microshift..."
 crio_conf
 
 echo
@@ -160,7 +160,7 @@ get_kubectl
 
 echo
 echo
-echo "🛳️ Installing microshift..."
+echo "🛳️  Installing microshift..."
 get_microshift
 
 until sudo test -f /var/lib/microshift/resources/kubeadmin/kubeconfig

@@ -100,5 +100,5 @@ With these constraints in mind we will be deploying ~microshift~ today which is 
 cd Downloads && git clone https://github.com/jmhbnz/kubernetes-edge-demo.git
 
 # Run the install script
-sudo ./microshift-install.sh
+cd kubernetes-edge-demo && sudo ./microshift-install.sh
 #+end_src
