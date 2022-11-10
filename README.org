@@ -80,10 +80,6 @@ Let's test our new tunnel by disconnecting from the tmate session and connecting
 
 #+NAME: Reconnect via cloudflared
 #+begin_src tmate :socket /tmp/james.tmate.tmate
-# Exit the current tmate session
-exit
-
-# Connect via cloudflared
 ssh -o ProxyCommand="cloudflared access ssh --hostname %h" mobian@phone.jamma.dev
 #+end_src
 
@@ -110,4 +106,16 @@ Once our cluster has been installed let's verify that it's running with ~kubectl
 sudo kubectl get nodes
 
 sudo kubectl get pods -A
+#+end_src
+
+
+* Bonus - deploying a workload
+
+With out cluster deployed, let's have some fun!
+
+#+NAME: Deploying a workload
+#+begin_src :socket /tmp/james.tmate.tmate
+sudo kubectl apply -f doom.yaml
+
+sudo kubectl expose deployment kubedoom -n kubedoom --type NodePort
 #+end_src
