@@ -102,3 +102,12 @@ cd Downloads && git clone https://github.com/jmhbnz/kubernetes-edge-demo.git
 # Run the install script
 cd kubernetes-edge-demo && sudo ./microshift-install.sh
 #+end_src
+
+Once our cluster has been installed let's verify that it's running with ~kubectl~:
+
+#+NAME: Verify cluster state
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+sudo kubectl get nodes
+
+sudo kubectl get pods -A
+#+end_src
