@@ -103,9 +103,7 @@ Once our cluster has been installed let's verify that it's running with ~kubectl
 
 #+NAME: Verify cluster state
 #+begin_src tmate :socket /tmp/james.tmate.tmate
-sudo kubectl get nodes
-
-sudo kubectl get pods -A
+sudo kubectl get nodes && sudo kubectl get pods -A
 #+end_src
 
 
@@ -114,8 +112,16 @@ sudo kubectl get pods -A
 With out cluster deployed, let's have some fun!
 
 #+NAME: Deploying a workload
-#+begin_src :socket /tmp/james.tmate.tmate
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 sudo kubectl apply -f doom.yaml
+#+end_src
 
+#+NAME: Expose vnc via a NodePort
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 sudo kubectl expose deployment kubedoom -n kubedoom --type NodePort
+#+end_src
+
+#+NAME: Get nodeport for localforward
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+sudo kubectl get svc -n kubedoom
 #+end_src
